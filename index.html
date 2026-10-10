@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0B1020">
+<title>TILESANDBOX — 2.5D 沙盒</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden; background: #0B1020;
+    overscroll-behavior: none; touch-action: none;
+    font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    color: #E8EAF0;
+  }
+  #game { position: fixed; inset: 0; display: block; }
+
+  #hud { position: fixed; inset: 0; pointer-events: none; }
+  #hud > * { pointer-events: auto; }
+
+  #clock {
+    position: absolute; top: calc(12px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right));
+    background: rgba(8,12,24,.55); border: 1px solid rgba(255,255,255,.14); border-radius: 10px;
+    padding: 6px 12px; font-size: 14px; font-variant-numeric: tabular-nums; letter-spacing: .5px;
+  }
+
+  #vitals {
+    position: absolute; top: calc(12px + env(safe-area-inset-top)); left: calc(12px + env(safe-area-inset-left));
+    width: min(220px, 40vw);
+  }
+  #vitals .bar { height: 12px; border-radius: 6px; background: rgba(8,12,24,.55);
+    border: 1px solid rgba(255,255,255,.14); margin-bottom: 5px; overflow: hidden; }
+  #vitals .bar i { display: block; height: 100%; transition: width .15s linear; }
+  #hpBar i { background: #E04A4A; }
+  #foodBar i { background: #E8C34A; }
+
+  #hotbar {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    display: flex; gap: 6px;
+  }
+  .slot {
+    width: 56px; height: 56px; border-radius: 12px;
+    background: rgba(8,12,24,.55); border: 1px solid rgba(255,255,255,.14);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 11px; line-height: 1.1; text-align: center; user-select: none; cursor: pointer;
+  }
+  .slot span { font-size: 10px; opacity: .75; }
+  .slot.sel { border-color: #7CC24A; box-shadow: 0 0 0 2px rgba(124,194,74,.35); transform: scale(1.05); }
+
+  #toast {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    bottom: calc(84px + env(safe-area-inset-bottom));
+    background: rgba(8,12,24,.75); border: 1px solid rgba(255,255,255,.14); border-radius: 10px;
+    padding: 8px 14px; font-size: 13px; opacity: 0; transition: opacity .2s;
+  }
+
+  #craft {
+    display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: min(360px, 86vw); background: rgba(10,14,28,.94);
+    border: 1px solid rgba(255,255,255,.16); border-radius: 16px; padding: 14px;
+  }
+  #craft h3 { margin: 0 0 10px; font-size: 15px; font-weight: 600; }
+  #craft .row {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    padding: 10px 12px; margin-bottom: 6px; border-radius: 10px;
+    background: rgba(255,255,255,.06); cursor: pointer; font-size: 13px;
+  }
+  #craft .row.off { opacity: .45; }
+  #craft .hint { font-size: 11px; opacity: .6; text-align: right; }
+
+  #stick { display: none; position: absolute; width: 112px; height: 112px; border-radius: 50%;
+    background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.18); }
+  #knob { position: absolute; left: 32px; top: 32px; width: 48px; height: 48px; border-radius: 50%;
+    background: rgba(255,255,255,.30); }
+
+  .tbtn {
+    display: none; position: absolute; width: 64px; height: 64px; border-radius: 50%;
+    background: rgba(124,194,74,.28); border: 1px solid rgba(255,255,255,.22);
+    align-items: center; justify-content: center; font-size: 12px; user-select: none;
+  }
+  #btnJump { right: calc(24px + env(safe-area-inset-right)); bottom: calc(176px + env(safe-area-inset-bottom)); }
+  #btnAttack { right: calc(100px + env(safe-area-inset-right)); bottom: calc(112px + env(safe-area-inset-bottom)); background: rgba(224,74,74,.30); }
+  #btnPlace { right: calc(100px + env(safe-area-inset-right)); bottom: calc(40px + env(safe-area-inset-bottom)); }
+  #btnCraft { right: calc(24px + env(safe-area-inset-right)); bottom: calc(24px + env(safe-area-inset-bottom)); }
+
+  #chatPanel {
+    display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: min(420px, 92vw); height: min(460px, 80vh);
+    background: rgba(10,14,28,.96); border: 1px solid rgba(255,255,255,.16); border-radius: 16px;
+    flex-direction: column; overflow: hidden;
+  }
+  #chatHead {
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+    border-bottom: 1px solid rgba(255,255,255,.10); font-size: 13px;
+  }
+  #chatHead #chatStatus { font-size: 11px; opacity: .6; flex: 1; }
+  #chatHead button { background: none; border: none; color: #E8EAF0; font-size: 18px; cursor: pointer; }
+  #chatList { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+  #chatList .msg { max-width: 82%; background: rgba(255,255,255,.07); border-radius: 10px; padding: 6px 10px; font-size: 13px; }
+  #chatList .msg.me { align-self: flex-end; background: rgba(124,194,74,.18); }
+  #chatList .who { font-size: 10px; opacity: .55; margin-bottom: 3px; }
+  #chatList .body { word-break: break-word; }
+  #chatList img, #chatList video { max-width: 100%; border-radius: 8px; display: block; }
+  #chatList audio { width: 100%; }
+  #chatAttach { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px; border-top: 1px solid rgba(255,255,255,.10); }
+  #chatAttach button, #chatInv .itemBtn {
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); color: #E8EAF0;
+    border-radius: 8px; padding: 5px 10px; font-size: 12px; cursor: pointer;
+  }
+  #chatInv { padding: 0 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+  #chatInv .hint { font-size: 11px; opacity: .6; }
+  #chatInputRow { display: flex; gap: 6px; padding: 10px 12px; border-top: 1px solid rgba(255,255,255,.10); }
+  #chatInput { flex: 1; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14);
+    border-radius: 8px; color: #E8EAF0; padding: 8px 10px; font-size: 13px; }
+  #chatSend { background: rgba(124,194,74,.32); border: 1px solid rgba(255,255,255,.18); color: #E8EAF0;
+    border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; }
+
+  #btnChat { right: calc(24px + env(safe-area-inset-right)); top: calc(60px + env(safe-area-inset-top));
+    background: rgba(90,150,220,.30); }
+
+  #rotate {
+    display: none; position: absolute; inset: 0; background: #0B1020;
+    align-items: center; justify-content: center; font-size: 15px; text-align: center; padding: 24px;
+  }
+  #boot {
+    position: absolute; left: 12px; bottom: calc(12px + env(safe-area-inset-bottom));
+    font-size: 11px; opacity: .55;
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div id="clock">06:00</div>
+  <div id="vitals">
+    <div class="bar" id="hpBar"><i style="width:100%"></i></div>
+    <div class="bar" id="foodBar"><i style="width:100%"></i></div>
+  </div>
+  <div id="hotbar"></div>
+  <div id="toast"></div>
+  <div id="craft"></div>
+  <div id="stick"><div id="knob"></div></div>
+  <div id="chatPanel">
+    <div id="chatHead">聊天<span id="chatStatus"></span><button id="chatClose">×</button></div>
+    <div id="chatList"></div>
+    <div id="chatAttach">
+      <button data-a="photo">拍照</button>
+      <button data-a="video">录像</button>
+      <button data-a="audio">录音</button>
+      <button data-a="image">图片</button>
+      <button data-a="item">物品</button>
+      <button data-a="loc">位置</button>
+    </div>
+    <div id="chatInv"></div>
+    <div id="chatInputRow">
+      <input id="chatInput" placeholder="说点什么…" autocomplete="off">
+      <button id="chatSend">发送</button>
+    </div>
+  </div>
+  <div id="btnChat" class="tbtn">聊</div>
+  <div id="btnJump" class="tbtn">跳</div>
+  <div id="btnAttack" class="tbtn">攻击</div>
+  <div id="btnPlace" class="tbtn">放置</div>
+  <div id="btnCraft" class="tbtn">合成</div>
+  <div id="rotate">请横屏游玩</div>
+  <div id="boot">A/D 移动 · 空格跳 · 左键挖 · 右键放 · F 攻击 · R 吃 · E 合成</div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+www/
+node_modules/
+.DS_Store
+
+# Cordova build products (regenerated in CI)
+cordova/www/
+cordova/platforms/
+cordova/plugins/
+cordova/package.json
+cordova/package-lock.json
+*.keystore
+*.apk

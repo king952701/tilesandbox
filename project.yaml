@@ -1,0 +1,33 @@
+engine: web
+project:
+  name: tilesandbox
+  codename: TILESANDBOX
+  stage: concept
+  pitch: 2.5D 无缝大世界沙盒 —— 79200 x 12800 像素，16px tile 拼接，挖掘建造为骨架，生存与农场经营为两大支柱。
+modes:
+  rigor: standard
+  automation: autonomous
+  evidence_required: true
+paths:
+  code_root: src/
+  test_root: tests/
+  data_root: assets/data/
+  asset_root: assets/
+  doc_root: docs/
+platforms:
+  - pc-browser
+  - mobile-browser
+  - android-apk
+world:
+  pixel_width: 79200
+  pixel_height: 12800
+  tile_size: 16
+  tile_cols: 4950
+  tile_rows: 800
+  chunk_tiles: 64
+  seamless: true
+stack:
+  renderer: canvas2d
+  bundler: none            # 免构建，原生 ES modules，直接 file/http/cordova 可跑
+  apk: cordova
+  web_host: github-pages

@@ -1,0 +1,62 @@
+name: Build Android APK
+
+on:
+  push:
+    paths: ['src/**', 'assets/**', 'index.html', 'cordova/config.xml', '.github/workflows/apk.yml']
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Assemble Cordova web root
+        run: |
+          mkdir -p cordova/www
+          cp index.html cordova/www/
+          cp -r src cordova/www/ 2>/dev/null || true
+          cp -r assets cordova/www/ 2>/dev/null || true
+
+      - name: Install Cordova
+        run: npm i -g cordova@12
+
+      - name: Add Android platform
+        working-directory: cordova
+        run: cordova platform add android@15.1.0
+
+      - name: Install Android SDK components
+        run: |
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Build
+        working-directory: cordova
+        run: cordova build android --debug
+
+      - name: Sign (optional)
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        working-directory: cordova
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > ../tilesandbox.keystore
+          cordova build android --release -- \
+            --keystore=../tilesandbox.keystore --storePassword=$KEYSTORE_PASS \
+            --alias=$KEY_ALIAS --password=$KEYSTORE_PASS
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: tilesandbox-apk
+          path: |
+            cordova/platforms/android/app/build/outputs/apk/debug/*.apk
+            cordova/platforms/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error

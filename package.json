@@ -1,0 +1,11 @@
+{
+  "name": "tilesandbox",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "2.5D seamless sandbox — 79200x12800 px world of 16px tiles, one codebase for PC browser, mobile browser and Android APK.",
+  "scripts": {
+    "test": "node tests/run.js",
+    "serve": "node tools/serve.js"
+  }
+}
