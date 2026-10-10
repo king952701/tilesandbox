@@ -39,8 +39,10 @@ jobs:
         working-directory: cordova
         run: cordova build android --debug
 
+      # NOTE: `secrets` is NOT allowed in an `if:` expression (it invalidates the whole
+      # workflow file -> the run fails with zero jobs). Gate on a repo variable instead.
       - name: Sign (optional)
-        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        if: ${{ vars.SIGN_RELEASE == 'true' }}
         working-directory: cordova
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
